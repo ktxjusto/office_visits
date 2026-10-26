@@ -1,0 +1,3 @@
+.venv/
+etl.log
+__pycache__/
