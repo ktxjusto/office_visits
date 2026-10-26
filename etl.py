@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 import pandas as pd 
 
-from util import connect_to_db, flag, parse_dates
+from util import connect_to_db
 from create_db_and_tables import ddl
 
 folder_path = Path("./office_visits")
@@ -22,6 +22,22 @@ def setup_logging():
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(message)s",
     )
+
+def flag(names, raw, mask, column, reason, new=None, level=logging.WARNING):
+    for idx in raw.index[mask.fillna(False).astype(bool)]:
+        msg = f"[{column}] {names[idx]}: {reason} | raw={raw[idx]!r}"
+        if new is not None:
+            msg += f" -> {new[idx]!r}"
+        log.log(level, msg)
+
+def parse_dates(s: pd.Series) -> pd.Series:
+    out = pd.Series(pd.NaT, index=s.index, dtype="datetime64[ns]")
+    for fmt in DATE_FORMATS:
+        todo = out.isna() & s.notna()
+        if not todo.any():
+            break
+        out[todo] = pd.to_datetime(s[todo], format=fmt, errors="coerce")
+    return out
 
 
 def extract() -> pd.DataFrame:
