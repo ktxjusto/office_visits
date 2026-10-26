@@ -34,7 +34,6 @@ def create_db():
 
 def create_tables():
     try:
-        # connect to the new database
         conn = psycopg.connect(
             host='127.0.0.1',
             user='postgres',
@@ -48,7 +47,6 @@ def create_tables():
 
         log.info("Connection successful to the office database")
 
-        # create the tables
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS visits_raw (
                 file_name TEXT,

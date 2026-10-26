@@ -1,6 +1,7 @@
-import pandas as pd
 import psycopg
-from pathlib import Path
+import logging
+
+log = logging.getLogger("office_visits_etl")
 
 def connect_to_db(): 
     try:
@@ -16,8 +17,8 @@ def connect_to_db():
 
         cursor = conn.cursor()
 
-        print('Connection successful')
+        log.info('Connection successful')
 
         return cursor
     except Exception as e:
-        print(f"Error with database connection: {e}")
+        log.exception(f"Error with database connection : {e}")

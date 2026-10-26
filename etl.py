@@ -81,7 +81,6 @@ def transform(raw_df: pd.DataFrame) -> pd.DataFrame:
     flag(names, names, parts["city"].isna(), "file_name",
           "could not split into city + id; set to NULL", level=logging.ERROR)
 
-    #visit_date: expected format is YYYY-MM-DD
     raw_date = df["visit_date"].astype("string").str.strip()
     date_missing = raw_date.isna() | (raw_date == "")
     raw_date = raw_date.mask(date_missing)
@@ -98,13 +97,10 @@ def transform(raw_df: pd.DataFrame) -> pd.DataFrame:
     flag(names, raw_date, date_failed, "visit_date",
           "unparseable date; set to NULL", level=logging.ERROR)
 
-    # ---- visit_count: expected format is a plain integer
     raw_count = df["visit_count"].astype("string").str.strip()
     count_missing = raw_count.isna() | (raw_count == "")
     raw_count = raw_count.mask(count_missing)
 
-    # Remove only known junk (asterisks, commas, whitespace); what's left
-    # must be plain digits, otherwise the value becomes NULL.
     stripped = raw_count.str.replace(r"[*,\s]", "", regex=True)
     already_clean = raw_count.str.fullmatch(r"\d+").fillna(False).astype(bool)
     cleanable = stripped.str.fullmatch(r"\d+").fillna(False).astype(bool)
@@ -119,7 +115,6 @@ def transform(raw_df: pd.DataFrame) -> pd.DataFrame:
     flag(names, raw_count, count_failed, "visit_count",
           "not a valid count; set to NULL", level=logging.ERROR)
 
-    # ---- result, in the column order of the visits table
     out = pd.DataFrame({
         "file_id": parts["file_id"],
         "office_name": parts["city"],
@@ -136,16 +131,18 @@ def transform(raw_df: pd.DataFrame) -> pd.DataFrame:
     return out 
 
 def load(df: pd.DataFrame, table: str):
-    # pandas <NA>/NaT/NaN -> None so they become NULL in Postgres
     df = df.astype(object).where(df.notna(), None)
     cols = ", ".join(df.columns)
+    cur = connect_to_db()
 
-    with connect_to_db() as cur:
+    try:
         with cur.copy(f"COPY {table} ({cols}) FROM STDIN") as copy:
             for row in df.itertuples(index=False, name=None):
                 copy.write_row(row)
-
-    log.info("Loaded %d rows into %s", len(df), table)
+        log.info("Loaded %d rows into %s", len(df), table)
+    finally:
+        cur.connection.close()
+        log.info("Connection Closed")
 
 
 def main():
